@@ -170,6 +170,7 @@ function upgrade {
   fi
 }
 
+# Taken from http://stackoverflow.com/questions/4023830/bash-how-compare-two-strings-in-version-format by Dennis Williamson http://stackoverflow.com/users/26428/dennis-williamson
 function vercomp () {
     if [[ $1 == $2 ]]
     then
