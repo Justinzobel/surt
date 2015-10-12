@@ -82,6 +82,7 @@ function printhelp {
   echo ""
   echo Usage:
   echo "ur install (it) - Install a package (specify name)."
+  echo "ur list-available (la) - List packages available in the user repository."
   echo "ur list-installed (li) - List packages installed from the user repository."
   echo "ur remove (rm) - Remove an installed package (specify name)."
   echo "ur search (sr) - Search the user repository for a package (specify name)."
