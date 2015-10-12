@@ -42,7 +42,12 @@ function install {
       ypkg package.yml
       if [[ $(find . -type f -iname "*.eopkg" | wc -l) -eq 0 ]];then echo "Build failed"
         else
-          echo "Build successful, installing."
+            read -p "Build successful, install $package? (y/n)" -n 1 -r
+            if [[ $REPLY =~ ^[Yy]$ ]]
+            then
+              # Do the install via eopkg
+              sudo eopkg it *.eopkg
+            fi
           sudo eopkg it *.eopkg
       # Tell DB installed
       if [[ $(grep $package /usr/share/solus-user-repo/database | wc -l) -eq 0 ]];then
@@ -121,17 +126,20 @@ function updaterepo {
 }
 
 function upgrade {
-  if [[ $package == "" ]];then
+  # Check if we're upgrading all or one specific package, or all with skipyn
+  if [[ $package == "-y" ]] || [[ $package == "" ]];then
     echo "Checking what packages need upgrading."
+    # Check what packages are installed
     while read p; do
       if [[ $(echo $p | cut -d= -f 2) == 1 ]];
         then 
           echo $(echo $p | cut -d= -f 1) >> /tmp/ur/upgrades
       fi
     done </usr/share/solus-user-repo/database
+    # Check if anything found
     if [ -f /tmp/ur/upgrades ];
       then
-        #Do version checks against packages
+        # Do version checks against packages
         while read a; do
           cd /tmp/ur
           wget -q http://solus-us.tk/ur/$a.yml
@@ -142,10 +150,18 @@ function upgrade {
           echo 
         done </tmp/ur/upgrades
         echo "Upgrade checks done."
+        # Check if any were found that were higher version
         if [ -f /tmp/ur/doup ];
           then
             echo "The following packages will be upgraded:"
             cat /tmp/ur/doup | sort
+            # Check for skipyn
+            if [[ $package == "-y" ]];then
+              # Do the upgrades
+              while read b; do
+                installpackage $b
+              done </tmp/ur/doup
+            else
             read -p "Do you wish to proceed? (y/n)" -n 1 -r
             if [[ $REPLY =~ ^[Yy]$ ]]
             then
@@ -154,19 +170,27 @@ function upgrade {
                 installpackage $b
               done </tmp/ur/doup
             fi
+          fi
           else
-            echo "No packages to upgrade."
+            echo "No packages need upgrading."
         fi
       else
-        echo "No packages found needing upgrade"
+        echo "No packages need upgrading."
     fi
   else
     # Single package upgrade, package name specified
     cd /tmp/ur
     wget -q http://solus-us.tk/ur/$package.yml
     newversion=$(cat $package.yml | grep version | cut -d: -f 2 | sed 's/ //g')
-    echo "Upgrading $package to $newversion"
-    installpackage $package
+    # Confirmation
+    if [[ $skipyn == "1" ]];
+      then installpackage $package
+    else
+      read -p "Do you wish to proceed? (y/n)" -n 1 -r
+        if [[ $REPLY =~ ^[Yy]$ ]]
+          then
+            installpackage $package
+        fi
   fi
 }
 
@@ -216,6 +240,7 @@ echo -e "\e[31m*** \e[0mTemplates are created by Solus users and have NOT been t
 # Variables
 package=$2
 action=$1
+confirm=$3
 
 # Confirm work dir exists, if not create
 if [[ ! -d /tmp/ur ]]; then mkdir -p /tmp/ur
@@ -233,6 +258,11 @@ fi
 
 # Check if database exists if not create
 if [[ ! -f /usr/share/solus-user-repo/database ]];then touch /usr/share/solus-user-repo/database
+fi
+
+# Check if we're skipping all y/n prompts
+if [[ $confirm == "-y" ]];
+  then skipyn=1
 fi
 
 if [[ $1 == "" ]];then printhelp
