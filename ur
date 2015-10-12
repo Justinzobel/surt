@@ -121,7 +121,7 @@ function updaterepo {
 
 function upgrade {
   if [[ $package == "" ]];then
-    echo "Upgrading all"
+    echo "Checking what packages need upgrading."
     while read p; do
       if [[ $(echo $p | cut -d= -f 2) == 1 ]];
         then 
@@ -130,9 +130,20 @@ function upgrade {
     done </usr/share/solus-user-repo/database
     if [ -f /tmp/ur/upgrades ];
       then
-        echo "Packages to be upgraded:"
-        cat /tmp/ur/upgrades | sort
-        # Do upgrade version checks
+        #Do version checks against packages
+        while read a; do
+          cd /tmp/ur
+          wget -q http://solus-us.tk/ur/$a.yml
+          newver=$(cat $a.yml | grep version | cut -d: -f 2 | sed 's/ //g')
+          inver=$(eopkg info $a | grep Name | cut -d: -f 3 | cut -d, -f 1 | sed 's/ //g')
+          if [[ $(vercomp $inver $newver) -eq 1 ]];then echo $a >> /tmp/ur/doup
+            fi
+          echo 
+        done </tmp/ur/upgrades
+        echo "Upgrade checks done."
+        if [ -f /tmp/ur/doup ];then echo "The following packages need upgrading:";cat /tmp/ur/dopup
+          else echo "No packages to upgrade."
+        fi
       else
         echo "No packages found needing upgrade"
     fi
@@ -145,6 +156,37 @@ function upgrade {
     echo "Upgrading $package to $newversion"
     installpackage $package
   fi
+}
+
+function vercomp () {
+    if [[ $1 == $2 ]]
+    then
+        return 0
+    fi
+    local IFS=.
+    local i ver1=($1) ver2=($2)
+    # fill empty fields in ver1 with zeros
+    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
+    do
+        ver1[i]=0
+    done
+    for ((i=0; i<${#ver1[@]}; i++))
+    do
+        if [[ -z ${ver2[i]} ]]
+        then
+            # fill empty fields in ver2 with zeros
+            ver2[i]=0
+        fi
+        if ((10#${ver1[i]} > 10#${ver2[i]}))
+        then
+            return 1
+        fi
+        if ((10#${ver1[i]} < 10#${ver2[i]}))
+        then
+            return 2
+        fi
+    done
+    return 0
 }
 
 function viewpackageyml {
