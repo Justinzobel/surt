@@ -55,13 +55,22 @@ fi
 }
 
 function listinstalled {
+  rm /tmp/ur/installed
   echo "Installed packages:"
+  # Check what packages are installed from the database
   while read p; do
       if [[ $(echo $p | cut -d= -f 2) == 1 ]];
         then 
-          echo $(echo $p | cut -d= -f 1)
+          echo $(echo $p | cut -d= -f 1) >> /tmp/ur/installed
       fi
     done </usr/share/solus-user-repo/database
+    # Check if any packages installed
+    if [ ! -f /tmp/ur/installed ];
+      then
+        echo "Database shows no packages installed."
+      else
+        cat /tmp/ur/installed
+    fi
 }
 
 function listpackages {
