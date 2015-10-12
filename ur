@@ -103,9 +103,20 @@ function printhelp {
 function remove {
   if [[ $package == "" ]];then echo "No package name specified."
     else
-      echo "Removing $package from your system."
-      sudo eopkg rm $package
-      sed -i 's/'"$package"'=1/'"$package"'=0/g' /usr/share/solus-user-repo/database
+      if [[ $confirm == "-y" ]]
+        then
+          echo "Removing $package from your system."
+          sudo eopkg rm $package
+          sed -i 's/'"$package"'=1/'"$package"'=0/g' /usr/share/solus-user-repo/database
+        else
+          read -p "Do you wish to remove $package? (y/n)" -n 1 -r
+            if [[ $REPLY =~ ^[Yy]$ ]]
+              then
+                echo "Removing $package from your system."
+                sudo eopkg rm $package
+                sed -i 's/'"$package"'=1/'"$package"'=0/g' /usr/share/solus-user-repo/database
+            fi
+      fi
   fi
 }
 
