@@ -141,15 +141,26 @@ function upgrade {
           echo 
         done </tmp/ur/upgrades
         echo "Upgrade checks done."
-        if [ -f /tmp/ur/doup ];then echo "The following packages need upgrading:";cat /tmp/ur/dopup
-          else echo "No packages to upgrade."
+        if [ -f /tmp/ur/doup ];
+          then
+            echo "The following packages will be upgraded:"
+            cat /tmp/ur/doup | sort
+            read -p "Do you wish to proceed? (y/n)" -n 1 -r
+            if [[ $REPLY =~ ^[Yy]$ ]]
+            then
+              # Do the upgrades
+              while read b; do
+                installpackage $b
+              done </tmp/ur/doup
+            fi
+          else
+            echo "No packages to upgrade."
         fi
       else
         echo "No packages found needing upgrade"
     fi
   else
     # Single package upgrade, package name specified
-    # Need a version comparison here
     cd /tmp/ur
     wget -q http://solus-us.tk/ur/$package.yml
     newversion=$(cat $package.yml | grep version | cut -d: -f 2 | sed 's/ //g')
