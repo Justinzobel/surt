@@ -5,11 +5,11 @@
 
 #Functions
 function actions {
-  if [ $1 == "install" ] || [ $1 == "it" ];then installpackage $package
+  if [ $1 == "install" ] || [ $1 == "it" ];then install $package
     elif [ $1 == "upgrade" ] || [ $1 == "up" ]; then upgrade $package
-    elif [ $1 == "search" ] || [ $1 == "sr" ]; then searchpackages $package
-    elif [ $1 == "viewinfo" ] || [ $1 == "vi" ]; then viewpackageyml $package
-    elif [ $1 == "remove" ] || [ $1 == "rm" ];then removepkg $package
+    elif [ $1 == "search" ] || [ $1 == "sr" ]; then search $package
+    elif [ $1 == "viewinfo" ] || [ $1 == "vi" ]; then viewpackage $package
+    elif [ $1 == "remove" ] || [ $1 == "rm" ];then remove $package
     elif [ $1 == "update-repo" ] || [ $1 == "ur" ];then updaterepo $package
     elif [ $1 == "list-available" ] || [ $1 == "la" ]; then listpackages
     elif [ $1 == "list-installed" ] || [ $1 == "li" ]; then listinstalled
@@ -29,7 +29,7 @@ function createpackagerfile {
   echo "Settings saved."
 }
 
-function installpackage {
+function install {
   if [[ $(cat /usr/share/solus-user-repo/repo-index | grep $1 | wc -l) -eq 0 ]];
     then
       echo "Download failed or invalid package name specified."
@@ -95,7 +95,7 @@ function printhelp {
   echo "ur up pantheon-photos"
 }
 
-function removepkg {
+function remove {
   if [[ $package == "" ]];then echo "No package name specified."
     else
       echo "Removing $package from your system."
@@ -104,7 +104,7 @@ function removepkg {
   fi
 }
 
-function searchpackages {
+function search {
   if [[ $package == "" ]];then echo "No search term provided."
   else
   echo "Searching for $package."
@@ -201,7 +201,7 @@ function vercomp () {
     return 0
 }
 
-function viewpackageyml {
+function viewpackage {
   echo "Getting package info for $package"
   cd /tmp/ur
   wget -q http://solus-us.tk/ur/$package.yml
@@ -229,8 +229,6 @@ fi
 # Check if repo index exists
 if [[ ! -f /usr/share/solus-user-repo/repo-index ]];then echo "Repository index not present, fetching.";updaterepo
 fi
-
-# Check if repo is old
 
 # Check if database exists if not create
 if [[ ! -f /usr/share/solus-user-repo/database ]];then touch /usr/share/solus-user-repo/database
