@@ -157,7 +157,7 @@ function upgrade {
           newver=$(cat $a.yml | grep version | cut -d: -f 2 | sed 's/ //g')
           inver=$(eopkg info $a | grep Name | cut -d: -f 3 | cut -d, -f 1 | sed 's/ //g')
           if [[ $(vercomp $inver $newver) -eq 1 ]];then echo $a >> /tmp/ur/doup
-            fi
+          fi
           echo 
         done </tmp/ur/upgrades
         echo "Upgrade checks done."
@@ -203,6 +203,7 @@ function upgrade {
             installpackage $package
         fi
   fi
+fi
 }
 
 # Taken from http://stackoverflow.com/questions/4023830/bash-how-compare-two-strings-in-version-format by Dennis Williamson http://stackoverflow.com/users/26428/dennis-williamson
