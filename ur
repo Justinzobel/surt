@@ -243,6 +243,7 @@ function viewpackage {
   cd /tmp/ur
   wget -q http://solus-us.tk/ur/$package.yml
   cat $package.yml
+  echo ""
 }
 
 # Warning message
