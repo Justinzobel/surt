@@ -1,7 +1,7 @@
 #!/bin/bash
 # Solus User Repo Tool by Justin Zobel (justin@solus-project.com)
 # License GPL-2.0
-# Version 0.2
+# Version 0.3
 
 # Colours
 red="\e[31m"
