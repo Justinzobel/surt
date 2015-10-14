@@ -58,8 +58,11 @@ function install {
                   # Do the install via eopkg
                   echo ""
                   sudo eopkg it *.eopkg
+                else
+                  cp /tmp/ur/*.eopkg ~
+                  echo ""
+                  echo -e "$yellow$notice Install aborted, eopkg file(s) are in your home directory."
                 fi
-              sudo eopkg it *.eopkg
           # Tell DB installed
           if [[ $(grep $package /usr/share/solus-user-repo/database | wc -l) -eq 0 ]];then
             echo $package=1 >> /usr/share/solus-user-repo/database
