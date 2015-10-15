@@ -23,6 +23,7 @@ function actions {
 }
 
 function addtoupgradelist {
+  # Create a list of packages to pass to the upgrader
   pkgname=$1
   release=$2
   version=$3
@@ -30,11 +31,12 @@ function addtoupgradelist {
   oldver=$5
   # Put package names in a list for it to process
   echo $pkgname >> /tmp/ur/doup
-  # Create a CSV with package data in it
+  # Create a CSV with package data in it so we can output pretty info
   echo $pkgname,$version,$release,$oldver,$oldrel >> /tmp/ur/uplist
 }
 
 function createpackagerfile {
+  # This just creates the ~/.solus/packager file so ypkg knows who is building.
   echo -e "${yellow}Notice: ${white}In order to build a package please enter the following:"
   mkdir -p ~/.solus
   touch ~/.solus/packager
@@ -47,42 +49,52 @@ function createpackagerfile {
 }
 
 function install {
+  # Check if pkgname blank
   if [[ $package == "" ]]
     then
       echo -e "${red}Error: ${white}No package name specified."
     else
+      # Check packagename is valid against our repo-index
       if [[ $(cat /usr/share/solus-user-repo/repo-index | grep $package | wc -l) -eq 0 ]];
         then
           echo -e "${red}Error: ${white}Download failed or invalid package name specified."
         else
+          # Attempt to get the package.yml from the server
           cd /tmp/ur
-          echo -e "${yellow}Notice: ${white}Attempting template download, this should only take a moment."
+          echo -e "${yellow}Notice: ${white}Attempting download of $package template, this should only take a moment."
           wget -q http://solus-us.tk/ur/$1.yml
-          mv $1.yml package.yml
-          echo -e "${yellow}Notice: ${white}Template found, building package."
-          ypkg package.yml
-          if [[ $(find . -type f -iname "*.eopkg" | wc -l) -eq 0 ]];then echo -e "${red}Error: ${white}Build failed"
+          if [[ ! -f $1.yml ]];then echo -e "${red}Error: ${white}Download failed or invalid package name specified."
             else
-                echo -e "${yellow}Notice: ${white}Build of $package successful."
-                read -p "Install to your system? (y/n) " -n 1 -r
-                if [[ $REPLY =~ ^[Yy]$ ]]
-                then
-                  # Do the install via eopkg
-                  echo ""
-                  sudo eopkg it *.eopkg
+              # Package.yml grabbed, build time.
+              mv $1.yml package.yml
+              echo -e "${yellow}Notice: ${white}Template found, building package."
+              ypkg package.yml
+              # Find out if a build was successful
+              if [[ $(find . -type f -iname "*.eopkg" | wc -l) -eq 0 ]];then echo -e "${red}Error: ${white}Build failed"
                 else
-                  cp /tmp/ur/*.eopkg ~
-                  echo ""
-                  echo -e "${yellow}Notice: ${white}Install aborted, eopkg file(s) are in your home directory."
-                fi
-          # Tell DB installed
-          if [[ $(grep $package /usr/share/solus-user-repo/database | wc -l) -eq 0 ]];then
-            echo $package=1 >> /usr/share/solus-user-repo/database
-          else
-            sed -i 's/'"$package"'=0/'"$package"'=1/g' /usr/share/solus-user-repo/database
+                  echo -e "${yellow}Notice: ${white}Build of $package successful."
+                  read -p "Install to your system? (y/n) " -n 1 -r
+                  if [[ $REPLY =~ ^[Yy]$ ]]
+                    then
+                      # Do the install via eopkg
+                      echo ""
+                      sudo eopkg it *.eopkg
+                      # Tell DB installed
+                      if [[ $(grep $package /usr/share/solus-user-repo/database | wc -l) -eq 0 ]];then
+                        echo $package=1 >> /usr/share/solus-user-repo/database
+                      else
+                        # Update DB from not-installed to installed
+                        sed -i 's/'"$package"'=0/'"$package"'=1/g' /usr/share/solus-user-repo/database
+                      fi
+                    else
+                      # Move .eopkg to ~/ as install aborted
+                      cp /tmp/ur/*.eopkg ~
+                      echo ""
+                      echo -e "${yellow}Notice: ${white}Install aborted, eopkg file(s) are in your home directory."
+                  fi
+              fi
           fi
-        fi
-    fi
+      fi
   fi
 }
 
@@ -106,6 +118,7 @@ function listinstalled {
 }
 
 function listpackages {
+  # List packages that are available from the User Repo
   echo -e "${yellow}Notice: ${white}Listing available packages."
   cat /usr/share/solus-user-repo/repo-index | more
 }
@@ -128,124 +141,146 @@ function printhelp {
 }
 
 function remove {
+  # Check if pkgname is blank
   if [[ $package == "" ]];then echo -e "${red}Error: ${white}No package name specified."
     else
       if [[ $confirm == "-y" ]]
         then
+          # Remove package from system without y/n confirmation
           echo -e "${yellow}Notice: ${white}Removing $package from your system."
           sudo eopkg rm $package
           sed -i 's/'"$package"'=1/'"$package"'=0/g' /usr/share/solus-user-repo/database
         else
+          # Get y/n confirmation
           echo -e "${yellow}Notice: ${white}Do you wish to remove $package?"
           read -p "Confirm (y/n) " -n 1 -r
             if [[ $REPLY =~ ^[Yy]$ ]]
               then
+                # Do removel of package and update database
                 echo ""
                 echo -e "${yellow}Notice: ${white}Removing $package from your system."
                 sudo eopkg rm $package
                 sed -i 's/'"$package"'=1/'"$package"'=0/g' /usr/share/solus-user-repo/database
+              else
+                echo -e "${yellow}Notice: ${white}Aborted removal of $package"
             fi
       fi
   fi
 }
 
 function search {
-  if [[ $package == "" ]];then echo -e "${red}Error: ${white}No search term provided."
-  else
-  echo -e "${yellow}Notice: ${white}Searching for $package."
-    if [[ $(grep -i $package /usr/share/solus-user-repo/repo-index | wc -l) -eq 0 ]];then echo -e "${red}Error: ${white}No results for $package."
-      elif [[ $(grep -i $package /usr/share/solus-user-repo/repo-index | wc -l) -gt 1 ]];then echo -e "${yellow}Notice: ${white}Found $(grep -i $package /usr/share/solus-user-repo/repo-index | wc -l) items:";grep -i $package /usr/share/solus-user-repo/repo-index
-      else echo -e "${yellow}Notice: ${white}Found 1 item:";grep -i $package /usr/share/solus-user-repo/repo-index
-    fi
+  # Check if search term provided
+  if [[ $package == "" ]];
+    then
+      echo -e "${red}Error: ${white}No search term provided."
+    else
+      echo -e "${yellow}Notice: ${white}Searching for $package."
+      if [[ $(grep -i $package /usr/share/solus-user-repo/repo-index | wc -l) -eq 0 ]]
+        then
+          echo -e "${red}Error: ${white}No results for $package."
+        elif [[ $(grep -i $package /usr/share/solus-user-repo/repo-index | wc -l) -gt 1 ]]
+          then
+            # Advise multiple items found
+            echo -e "${yellow}Notice: ${white}Found $(grep -i $package /usr/share/solus-user-repo/repo-index | wc -l) items:"
+            grep -i $package /usr/share/solus-user-repo/repo-index
+        else
+          # Advise singular item found
+          echo -e "${yellow}Notice: ${white}Found 1 item:"
+          grep -i $package /usr/share/solus-user-repo/repo-index
+      fi
   fi
 }
 
 function updaterepo {
+  # Update repo database from server to local disk.
   wget -q http://solus-us.tk/ur/index -O /usr/share/solus-user-repo/repo-index
   echo Repository Database Updated.
 }
 
 function upgrade {
   # Check if we're upgrading all or one specific package, or all with skipyn
-  if [[ $package == "-y" ]] || [[ $package == "" ]];then
-    echo -e "${yellow}Notice: ${white}Checking what packages need upgrading."
-    # Check what packages are installed
-    while read p; do
-      if [[ $(echo $p | cut -d= -f 2) == 1 ]];
-        then 
-          echo $(echo $p | cut -d= -f 1) >> /tmp/ur/upgrades
-      fi
-    done </usr/share/solus-user-repo/database
-    # Check if anything found
-    if [ -f /tmp/ur/upgrades ];
-      then
-        # Do release number checks against packages
-        while read a; do
-          cd /tmp/ur
-          wget -q http://solus-us.tk/ur/$a.yml
-          reporelease=$(cat $a.yml | grep release | cut -d: -f 2 | sed 's/ //g')
-          repoversion=$(cat $a.yml | grep version | cut -d: -f 2 | sed 's/ //g')
-          installedrelease=$(eopkg info $a | grep Name | cut -d: -f 4 | sed 's/ //g')
-          installedversion=$(eopkg info $a | grep Name | cut -d: -f 3 | cut -d, -f 1 | sed 's/ //g')
-          if [[ $reporelease -gt $installedrelease ]]
-            then addtoupgradelist $a $reporelease $repoversion $installedrelease $installedversion
-          fi
-          echo 
-        done </tmp/ur/upgrades
-        echo -e "${yellow}Notice: ${white}Upgrade checks done."
-        # Check if any were found that were higher version
-        if [ -f /tmp/ur/doup ];
-          then
-            echo -e "${yellow}Notice: ${white}The following package(s) will be upgraded:"
-            # Do a fancy upgrade list here
-            while read m; do
-              #do stuff to $m
-              pkg=$(echo $m | cut -d, -f 1)
-              ver=$(echo $m | cut -d, -f 2)
-              rel=$(echo $m | cut -d, -f 3)
-              oldver=$(echo $m | cut -d, -f 4)
-              oldrel=$(echo $m | cut -d, -f 5)
-              echo -e "${yellow}Package: ${white}$pkg ${yellow}Version: ${white}$oldver ${yellow}Release: ${white}$oldrel to be upgraded to ${yellow}Version: ${white}$ver ${yellow}Release: ${white}$rel"
-            done </tmp/ur/urlist
-            # Check for skipyn
-            if [[ $package == "-y" ]];then
-              # Do the upgrades
-              while read b; do
-                installpackage $b
-              done </tmp/ur/doup
-            else
-            read -p "Do you wish to proceed? (y/n) " -n 1 -r
-            if [[ $REPLY =~ ^[Yy]$ ]]
-            then
-              # Do the upgrades
-              while read b; do
-                installpackage $b
-              done </tmp/ur/doup
-            fi
-          fi
-          else
-            echo -e "${yellow}Notice: ${white}No packages need upgrading."
+  if [[ $package == "-y" ]] || [[ $package == "" ]]
+    then
+      echo -e "${yellow}Notice: ${white}Checking what packages need upgrading."
+      # Check what packages are installed
+      while read p; do
+        if [[ $(echo $p | cut -d= -f 2) == 1 ]]
+          then 
+            # Push package names to upgrade list
+            echo $(echo $p | cut -d= -f 1) >> /tmp/ur/upgrades
         fi
-      else
-        echo -e "${yellow}Notice: ${white}No packages need upgrading."
-    fi
-  else
-    # Single package upgrade, package name specified
-    cd /tmp/ur
-    wget -q http://solus-us.tk/ur/$package.yml
-    newversion=$(cat $package.yml | grep version | cut -d: -f 2 | sed 's/ //g')
-    # Confirmation
-    if [[ $skipyn == "1" ]];
-      then installpackage $package
+      done </usr/share/solus-user-repo/database
+      # Check if anything found
+      if [ -f /tmp/ur/upgrades ];
+        then
+          # Do release number checks against packages
+          while read a; do
+            cd /tmp/ur
+            wget -q http://solus-us.tk/ur/$a.yml
+            reporelease=$(cat $a.yml | grep release | cut -d: -f 2 | sed 's/ //g')
+            repoversion=$(cat $a.yml | grep version | cut -d: -f 2 | sed 's/ //g')
+            installedrelease=$(eopkg info $a | grep Name | cut -d: -f 4 | sed 's/ //g')
+            installedversion=$(eopkg info $a | grep Name | cut -d: -f 3 | cut -d, -f 1 | sed 's/ //g')
+            if [[ $reporelease -gt $installedrelease ]]
+              # Push package info to addtoupgradelist function to display pretty output later
+              then addtoupgradelist $a $reporelease $repoversion $installedrelease $installedversion
+            fi
+          done </tmp/ur/upgrades
+          echo -e "${yellow}Notice: ${white}Upgrade checks done."
+          # Check if any were found that were higher version
+          if [ -f /tmp/ur/doup ]
+            then
+              echo -e "${yellow}Notice: ${white}The following package(s) will be upgraded:"
+              # Get a list of packages to upgrade
+              while read m; do
+                # Get package info from $m and get old and new release number and version
+                pkg=$(echo $m | cut -d, -f 1)
+                ver=$(echo $m | cut -d, -f 2)
+                rel=$(echo $m | cut -d, -f 3)
+                oldver=$(echo $m | cut -d, -f 4)
+                oldrel=$(echo $m | cut -d, -f 5)
+                echo -e "${yellow}Package: ${white}$pkg ${yellow}Version: ${white}$oldver ${yellow}Release: ${white}$oldrel to be upgraded to ${yellow}Version: ${white}$ver ${yellow}Release: ${white}$rel"
+              done </tmp/ur/urlist
+              # Check for skipyn
+              if [[ $package == "-y" ]]
+                then
+                  # Do the upgrades
+                  while read b; do
+                    installpackage $b
+                  done </tmp/ur/doup
+                else
+                  read -p "Do you wish to proceed? (y/n) " -n 1 -r
+                  if [[ $REPLY =~ ^[Yy]$ ]]
+                  then
+                    # Do the upgrades
+                    while read b; do
+                      installpackage $b
+                    done </tmp/ur/doup
+                  fi
+              fi
+            else
+              echo -e "${yellow}Notice: ${white}No packages need upgrading."
+          fi
+        else
+          echo -e "${yellow}Notice: ${white}No packages need upgrading."
+      fi
     else
-      echo -e "${yellow}Notice: ${white}Package built."
-      read -p "Do you wish to proceed? (y/n) " -n 1 -r
+      # Single package upgrade, package name specified
+      cd /tmp/ur
+      wget -q http://solus-us.tk/ur/$package.yml
+      newversion=$(cat $package.yml | grep version | cut -d: -f 2 | sed 's/ //g')
+      # Confirmation
+      if [[ $skipyn == "1" ]]
+        then installpackage $package
+      else
+        echo -e "${yellow}Notice: ${white}Package built."
+        read -p "Do you wish to proceed? (y/n) " -n 1 -r
         if [[ $REPLY =~ ^[Yy]$ ]]
           then
             installpackage $package
         fi
+      fi
   fi
-fi
 }
 
 function viewpackage {
