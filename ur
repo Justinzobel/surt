@@ -14,6 +14,7 @@ function actions {
     elif [ $1 == "upgrade" ] || [ $1 == "up" ]; then upgrade $package
     elif [ $1 == "search" ] || [ $1 == "sr" ]; then search $package
     elif [ $1 == "viewinfo" ] || [ $1 == "vi" ]; then viewpackage $package
+    elif [ $1 == "viewyml" ] || [ $1 == "vy" ]; then viewyml $package
     elif [ $1 == "remove" ] || [ $1 == "rm" ];then remove $package
     elif [ $1 == "update-repo" ] || [ $1 == "ur" ];then updaterepo $package
     elif [ $1 == "list-available" ] || [ $1 == "la" ]; then listpackages
@@ -149,6 +150,7 @@ function printhelp {
   echo -e "ur update-repo (ur) - Update repository information"
   echo -e "ur upgrade (up) - Upgrade a package (specify name) or all (no value specified)."
   echo -e "ur viewinfo (vi) - View information on a package in the repository (specify name)"
+  echo -e "ur viewyml (vy) - View the raw YML template of a package in the repository (specify name)"
   echo -e ""
   echo -e "${yellow}Examples:${white}"
   echo -e "ur install dfc"
@@ -286,11 +288,45 @@ function viewpackage {
     then
       echo -e "${red}Error: ${white}No package name supplied."
     else
-      echo -e "${yellow}Notice: ${white}Getting package info for $package"
-      cd /tmp/ur
-      wget -q http://solus-us.tk/ur/$package.yml
-      cat $package.yml
-      echo -e ""
+      if [[ $(cat /usr/share/solus-user-repo/repo-index | grep $package | wc -l) -eq 0 ]]
+        then echo -e "${red}Error: ${white}Package $package not found in database."
+      else
+        echo -e "${yellow}Notice: ${white}Getting package info for $package"
+        cd /tmp/ur
+        wget -q http://solus-us.tk/ur/$package.yml
+        if [[ -f $package.yml ]]
+          then
+            name=$(head -n1 $package.yml | grep name | cut -d: -f 2 | sed 's/ //g')
+            version=$(head -n2 $package.yml | grep version | cut -d: -f 2 | sed 's/ //g')
+            release=$(head -n3 $package.yml | grep release | cut -d: -f 2 | sed 's/ //g')
+            summary=$(cat $package.yml | grep "summary   " | cut -d: -f 2 | sed 's/: //g')
+            echo -e "${yellow}Name: ${white}$name"
+            echo -e "${yellow}Version: ${white}$version"
+            echo -e "${yellow}Release: ${white}$release"
+            echo -e "${yellow}Summary:${white}$summary"
+            echo -e ""
+        fi
+      fi
+  fi
+}
+
+function viewyml {
+  if [[ $package == "" ]]
+    then
+      echo -e "${red}Error: ${white}No package name supplied."
+    else
+      if [[ $(cat /usr/share/solus-user-repo/repo-index | grep $package | wc -l) -eq 0 ]]
+        then echo -e "${red}Error: ${white}Package $package not found in database."
+      else
+        echo -e "${yellow}Notice: ${white}Getting yml template for $package"
+        cd /tmp/ur
+        wget -q http://solus-us.tk/ur/$package.yml
+        if [[ -f $package.yml ]]
+          then
+            cat $package.yml
+            echo ""
+        fi
+      fi
   fi
 }
 
