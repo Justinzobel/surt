@@ -112,7 +112,7 @@ function listpackages {
 
 function printhelp {
   echo -e ""
-  echo "${yellow}Usage:${white}"
+  echo -e "${yellow}Usage:${white}"
   echo -e "ur install (it) - Install a package (specify name)."
   echo -e "ur list-available (la) - List packages available in the user repository."
   echo -e "ur list-installed (li) - List packages installed from the user repository."
