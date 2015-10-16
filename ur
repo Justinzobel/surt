@@ -8,21 +8,6 @@ red="\e[31m"
 white="\e[0m"
 yellow="\e[93m"
 
-#Functions
-function actions {
-  if [ $1 == "install" ] || [ $1 == "it" ];then install $package
-    elif [ $1 == "upgrade" ] || [ $1 == "up" ]; then upgrade $package
-    elif [ $1 == "search" ] || [ $1 == "sr" ]; then search $package
-    elif [ $1 == "viewinfo" ] || [ $1 == "vi" ]; then viewpackage $package
-    elif [ $1 == "viewyml" ] || [ $1 == "vy" ]; then viewyml $package
-    elif [ $1 == "remove" ] || [ $1 == "rm" ];then remove $package
-    elif [ $1 == "update-repo" ] || [ $1 == "ur" ];then updaterepo $package
-    elif [ $1 == "list-available" ] || [ $1 == "la" ]; then listpackages
-    elif [ $1 == "list-installed" ] || [ $1 == "li" ]; then listinstalled
-    else echo -e "${red}Error: ${white}Incorrect syntax.";printhelp
-  fi
-}
-
 function addtoupgradelist {
   # Create a list of packages to pass to the upgrader
   pkgname=$1
@@ -49,7 +34,7 @@ function createpackagerfile {
   echo -e "${yellow}Notice: ${white}Settings saved."
 }
 
-function install {
+function do_install {
   cd /tmp/ur
   # Check if pkgname blank
   if [[ $package == "" ]]
@@ -100,7 +85,7 @@ function install {
   fi
 }
 
-function listinstalled {
+function do_listinstalled {
   if [[ -f /tmp/ur/installed ]];then rm /tmp/ur/installed;fi
   echo -e "${yellow}Notice: ${white}Installed packages:"
   # Check what packages are installed from the database
@@ -125,7 +110,7 @@ function listinstalled {
     fi
 }
 
-function listpackages {
+function do_listavaible {
   # List packages that are available from the User Repo
   echo -e "${yellow}Notice: ${white}Listing available packages."
   echo ""
@@ -139,7 +124,7 @@ function listpackages {
   done </usr/share/solus-user-repo/repo-index
 }
 
-function printhelp {
+function print_usage {
   echo -e ""
   echo -e "${yellow}Usage:${white}"
   echo -e "ur install (it) - Install a package (specify name)."
@@ -157,7 +142,7 @@ function printhelp {
   echo -e "ur up pantheon-photos"
 }
 
-function remove {
+function do_remove {
   # Check if pkgname is blank
   if [[ $package == "" ]];then echo -e "${red}Error: ${white}No package name specified."
     else
@@ -185,7 +170,7 @@ function remove {
   fi
 }
 
-function search {
+function do_search {
   # Check if search term provided
   if [[ $package == "" ]];
     then
@@ -220,14 +205,14 @@ function search {
   fi
 }
 
-function updaterepo {
+function do_updaterepo {
   # Update repo database from server to local disk.
   echo -e "${yellow}Notice: ${white}Updating Repository..."
   wget -q http://solus-us.tk/ur/index -O /usr/share/solus-user-repo/repo-index
   echo -e "${yellow}Notice: ${white}Repository Updated."
 }
 
-function upgrade {
+function do_upgrade {
   # Firstly update the repo index so we have the right info
   updaterepo
   # Check if we're upgrading all or one specific package, or all with skipyn
@@ -283,7 +268,7 @@ function upgradesingle {
   fi
 }
 
-function viewpackage {
+function do_viewinfo {
   if [[ $package == "" ]]
     then
       echo -e "${red}Error: ${white}No package name supplied."
@@ -310,7 +295,7 @@ function viewpackage {
   fi
 }
 
-function viewyml {
+function do_viewyml {
   if [[ $package == "" ]]
     then
       echo -e "${red}Error: ${white}No package name supplied."
@@ -363,6 +348,37 @@ if [[ $confirm == "-y" ]];
   then skipyn=1
 fi
 
-if [[ $1 == "" ]];then printhelp
-  else actions $1
-fi
+arg="${1}"
+shift
+case "${arg}" in
+    install|it)
+        do_install $*
+        ;;
+    upgrade|ur)
+        do_upgrade $*
+        ;;
+    search|sr)
+        do_search $*
+        ;;
+    viewinfo|vi)
+        do_viewinfo $*
+        ;;
+    viewyml|vy)
+        do_viewyml $*
+        ;;
+    remove|rm)
+        do_remove $*
+        ;;
+    update-repo|ur)
+        do_updaterepo $*
+        ;;
+    list-available|la)
+        do_listavailable $*
+        ;;
+    list-installed|li)
+        do_listinstalled $*
+        ;;
+    *)
+        print_usage
+        ;;
+esac
