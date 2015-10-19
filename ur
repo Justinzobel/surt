@@ -12,7 +12,7 @@ yellow="\e[93m"
 white="\e[0m"
 
 function do_fail() {
-    echo "$*"
+    echo -e "${error}$*"
     exit 1
 }
 
@@ -137,6 +137,12 @@ function do_listavailable {
     rel=$(grep $p /var/db/surt/repo-index | cut -d, -f 3)
     echo -e "${yellow}Package: ${white}$pkg ${yellow}Version: ${white}${ver} ${yellow}Release: ${white}$rel"
   done </var/db/surt/repo-index
+}
+
+function get_systemdevel {
+  # Ensure system.devel installed and up to date.
+  echo -e "${notice}Ensuring development tools are installed and up to date."
+  sudo eopkg it -c system.devel -y
 }
 
 function print_usage {
@@ -367,10 +373,12 @@ shift
 case "${arg}" in
     install|it)
         require_root
+        get_systemdevel
         do_install $*
         ;;
     upgrade|up)
         require_root
+        get_systemdevel
         do_upgrade $*
         ;;
     search|sr)
