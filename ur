@@ -11,6 +11,17 @@ red="\e[31m"
 yellow="\e[93m"
 white="\e[0m"
 
+function do_fail() {
+    echo "$*"
+    exit 1
+}
+
+function require_root() {
+  if [[ "${EUID}" -ne 0 ]]; then
+    do_fail "Must be root to use this function"
+  fi
+}
+
 function addtoupgradelist {
   # Create a list of packages to pass to the upgrader
   pkgname=$1
@@ -211,8 +222,12 @@ function do_search {
 }
 
 function do_updaterepo {
+  require_root
   # Update repo database from server to local disk.
   echo -e "${notice}Updating Repository..."
+  if [[ ! -d "/var/db/surt" ]]; then
+    mkdir -p "/var/db/surt" || do_fail "Unable to create /var/db/surt - check permissions"
+  fi
   wget -q http://solus-us.tk/ur/index -O /var/db/surt/repo-index
   echo -e "${notice}Repository Updated."
 }
@@ -340,7 +355,7 @@ if [[ ! -d ~/.solus ]];then createpackagerfile
 fi
 
 # Check if repo index exists
-if [[ ! -f /var/db/surt/repo-index ]];then echo -e "${notice}Repository index not present, fetching.";updaterepo
+if [[ ! -f /var/db/surt/repo-index ]];then echo -e "${notice}Repository index not present, fetching.";do_updaterepo
 fi
 
 # Check if database exists if not create
@@ -351,9 +366,11 @@ arg="${1}"
 shift
 case "${arg}" in
     install|it)
+        require_root
         do_install $*
         ;;
     upgrade|up)
+        require_root
         do_upgrade $*
         ;;
     search|sr)
@@ -366,6 +383,7 @@ case "${arg}" in
         do_viewyml $*
         ;;
     remove|rm)
+        require_root
         do_remove $*
         ;;
     update-repo|ur)
