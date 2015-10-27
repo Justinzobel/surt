@@ -69,7 +69,7 @@ function do_install {
               # Package.yml grabbed, build time.
               mv $1.yml package.yml
               echo -e "${notice}Template found, building package."
-              sudo evobuild -p unstable-x86_64 package.yml
+              sudo evobuild build package.yml -p unstable-x86_64
               # Find out if a build was successful
               if [[ $(find . -type f -iname "*.eopkg" | wc -l) -eq 0 ]];then echo -e "${error}Build failed"
                 else
@@ -137,12 +137,6 @@ function do_listavailable {
     rel=$(grep $p /var/db/surt/repo-index | cut -d, -f 3)
     echo -e "${yellow}Package: ${white}$pkg ${yellow}Version: ${white}${ver} ${yellow}Release: ${white}$rel"
   done </var/db/surt/repo-index
-}
-
-function get_systemdevel {
-  # Ensure system.devel installed and up to date.
-  echo -e "${notice}Ensuring development tools are installed and up to date."
-  sudo eopkg it -c system.devel -y
 }
 
 function print_usage {
@@ -373,12 +367,10 @@ shift
 case "${arg}" in
     install|it)
         require_root
-        get_systemdevel
         do_install $*
         ;;
     upgrade|up)
         require_root
-        get_systemdevel
         do_upgrade $*
         ;;
     search|sr)
