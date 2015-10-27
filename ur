@@ -69,7 +69,7 @@ function do_install {
               # Package.yml grabbed, build time.
               mv $1.yml package.yml
               echo -e "${notice}Template found, building package."
-              ypkg package.yml
+              sudo evobuild -p unstable-x86_64 package.yml
               # Find out if a build was successful
               if [[ $(find . -type f -iname "*.eopkg" | wc -l) -eq 0 ]];then echo -e "${error}Build failed"
                 else
@@ -270,7 +270,7 @@ function upgrademultiple {
     else
       while read $p;do
         echo -e "${notice}Upgrading ${yellow}${p}"
-        install $P
+        install $p
       done </tmp/ur/upgradethese
   fi
 }
