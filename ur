@@ -35,6 +35,7 @@ function addtoupgradelist {
   echo $pkgname,$version,$release,$oldver,$oldrel >> /tmp/ur/uplist
 }
 
+# Deprecated but leaving code here in case it's needed in future
 function createpackagerfile {
   # This just creates the ~/.solus/packager file so ypkg knows who is building.
   echo -e "${notice}In order to build a package please enter the following:"
@@ -350,9 +351,9 @@ fi
 # Remove any leftover files
 rm -rf /tmp/ur/*
 
-# YPKG File Checker
-if [[ ! -d ~/.solus ]];then createpackagerfile
-fi
+# YPKG File Checker - deprecated but kept in case it's needed in future
+# if [[ ! -d ~/.solus ]];then createpackagerfile
+# fi
 
 # Check if repo index exists
 if [[ ! -f /var/db/surt/repo-index ]];then echo -e "${notice}Repository index not present, fetching.";do_updaterepo
