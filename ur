@@ -22,6 +22,16 @@ function require_root() {
   fi
 }
 
+function require_evobuildinit {
+  echo -e "${notice}Checking evobuild initialised."
+  sudo evobuild init -p unstable-x86_64
+}
+
+function do_evobuildupdate {
+  echo -e "${notice}Checking evobuild up to date."
+  sudo evobuild update -p unstable-x86_64
+}
+
 function addtoupgradelist {
   # Create a list of packages to pass to the upgrader
   pkgname=$1
@@ -36,7 +46,7 @@ function addtoupgradelist {
 }
 
 function createpackagerfile {
-  # This just creates the ~/.solus/packager file so ypkg knows who is building.
+  # This just creates the ~/.solus/packager file so evobuild knows who is building.
   echo -e "${notice}In order to build a package please enter the following:"
   mkdir -p ~/.solus
   touch ~/.solus/packager
@@ -222,7 +232,6 @@ function do_search {
 }
 
 function do_updaterepo {
-  require_root
   # Update repo database from server to local disk.
   echo -e "${notice}Updating Repository..."
   if [[ ! -d "/var/db/surt" ]]; then
@@ -350,6 +359,7 @@ fi
 # Remove any leftover files
 rm -rf /tmp/ur/*
 
+# Pakcager File Checker
 if [[ ! -d ~/.solus ]];then createpackagerfile
 fi
 
@@ -366,10 +376,14 @@ shift
 case "${arg}" in
     install|it)
         require_root
+        require_evobuildinit
+        do_evobuildupdate
         do_install $*
         ;;
     upgrade|up)
         require_root
+        require_evobuildinit
+        do_evobuildupdate
         do_upgrade $*
         ;;
     search|sr)
@@ -386,6 +400,7 @@ case "${arg}" in
         do_remove $*
         ;;
     update-repo|ur)
+        require_root
         do_updaterepo $*
         ;;
     list-available|la)
