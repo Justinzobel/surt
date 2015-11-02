@@ -10,4 +10,4 @@ Solus User Repository Tool
 # To Do
 * Dependency checking - check if it exists in UR, if it does, advise user and install that first, then proceed with normal install
 * Bash completion of commands and package names
-* Add a lock file to prevent simultaneous instances
+* Add a lock file to prevent simultaneous instances (in progress)
