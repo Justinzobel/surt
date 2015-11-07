@@ -13,6 +13,7 @@ white="\e[0m"
 
 function do_fail() {
     echo -e "${error}$*"
+    rm /tmp/urlock
     exit 1
 }
 
@@ -407,3 +408,6 @@ case "${arg}" in
         print_usage
         ;;
 esac
+
+# Remove lock file
+rm /tmp/urlock
