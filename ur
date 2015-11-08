@@ -70,7 +70,12 @@ function do_install {
               # Package.yml grabbed, build time.
               mv $1.yml package.yml
               echo -e "${notice}Template found, building package."
-              sudo evobuild build package.yml -p unstable-x86_64
+              if [[ $(inxi -r | grep unstable | wc -l) -eq 1 ]]
+                then
+                  sudo evobuild build package.yml -p unstable-x86_64
+                else
+                  sudo evobuild build package.yml
+              fi
               # Find out if a build was successful
               if [[ $(find . -type f -iname "*.eopkg" | wc -l) -eq 0 ]];then echo -e "${error}Build failed"
                 else
