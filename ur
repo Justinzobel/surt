@@ -17,6 +17,60 @@ function do_fail() {
     exit 1
 }
 
+function do_notice {
+    echo -e "${notice}$*"
+}
+
+function do_firstrun {
+    do_notice "Checking required assets available."
+    do_notice "Reticulating splines."
+    do_notice "Checking pyyaml is installed."
+    sudo eopkg it -y pyyaml
+    # Check evobuild is there.
+    if [[ $(eopkg lr | grep unstable | wc -l) -eq 0 ]]
+      then
+        do_notice "Installing evovbuild for stable repository."
+        sudo evobuild init
+        sudo evobuild update
+      else
+        do_notice "Installing evovbuild for unstable repository."
+        sudo evobuild init -p unstable-x86_64
+        sudo evobuild update -p unstable-x86_64
+    fi
+    # This just creates the ~/.solus/packager file so ypkg knows who is building.
+    do_notice "In order to build packages please enter the following:"
+    mkdir -p ~/.solus
+    rm ~/.solus/packager
+    touch ~/.solus/packager
+    read -p "Full Name: " name
+    read -p "Email Address: " email
+    echo -e "[Packager]" >> ~/.solus/packager
+    echo -e "Name=$name" >> ~/.solus/packager
+    echo -e "Email=$email"  >> ~/.solus/packager
+    do_notice "Settings saved."
+    # Check current version
+    do_upgradecheck
+    if [[ -f /var/db/surt/firstrundone ]];then sudo rm /var/db/surt/firstrundone;fi
+    echo "1" > sudo tee -a /var/db/surt/firstrundone
+}
+
+function do_upgradecheck {
+    do_notice "Checking for new version of User Repsoitory Tool."
+    cd /tmp/
+    wget -q https://raw.githubusercontent.com/Justinzobel/surt/master/version
+    installedversion=$(cat /var/db/surt/version)
+    githubversion=$(cat version)
+    if [[ $githubvresion -gt $installedversion ]]
+        then
+            do_notice "New version available, installing."
+            sudo wget -q https://raw.githubusercontent.com/Justinzobel/surt/master/ur -O /usr/bin/ur
+            sudo chmod +x /usr/bin/ur
+            do_notice "Version $githubversion installed."
+        else
+            do_notice "Version check complete, no new version."
+    fi
+}
+
 function require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
     do_fail "Must be root to use this function"
@@ -36,19 +90,6 @@ function addtoupgradelist {
   echo $pkgname,$version,$release,$oldver,$oldrel >> /tmp/ur/uplist
 }
 
-function createpackagerfile {
-  # This just creates the ~/.solus/packager file so ypkg knows who is building.
-  echo -e "${notice}In order to build a package please enter the following:"
-  mkdir -p ~/.solus
-  touch ~/.solus/packager
-  read -p "Full Name: " name
-  read -p "Email Address: " email
-  echo -e "[Packager]" >> ~/.solus/packager
-  echo -e "Name=$name" >> ~/.solus/packager
-  echo -e "Email=$email"  >> ~/.solus/packager
-  echo -e "${notice}Settings saved."
-}
-
 function do_install {
   cd /tmp/ur
   # Check if pkgname blank
@@ -56,6 +97,12 @@ function do_install {
     then
       echo -e "${error}No package name specified."
     else
+      # Update evobuild
+      if [[ -f /var/lib/evobuild/images/main-x86_64.img ]];then sudo evobuild update
+        elif [[ -f /var/lib/evobuild/images/main-x86_64.img ]];then sudo evobuild update -p unstable-x86_64
+        else
+          do_firstrun
+      fi      
       # Check packagename is valid against our repo-index
       if [[ $(cat /var/db/surt/repo-index | grep ${package} | wc -l) -eq 0 ]];
         then
@@ -63,13 +110,13 @@ function do_install {
         else
           # Attempt to get the package.yml from the server
           cd /tmp/ur
-          echo -e "${notice}Attempting download of ${yellow}${package} ${white}template, this should only take a moment."
+          do_notice "Attempting download of ${yellow}${package} ${white}template, this should only take a moment."
           wget -q http://solus-us.tk/ur/$1.yml
           if [[ ! -f $1.yml ]];then echo -e "${error}Download failed or invalid package name specified."
             else
               # Package.yml grabbed, build time.
               mv $1.yml package.yml
-              echo -e "${notice}Template found, building package."
+              do_notice "Template found, building package."
               if [[ $(inxi -r | grep unstable | wc -l) -eq 1 ]]
                 then
                   sudo evobuild build package.yml -p unstable-x86_64
@@ -79,7 +126,7 @@ function do_install {
               # Find out if a build was successful
               if [[ $(find . -type f -iname "*.eopkg" | wc -l) -eq 0 ]];then echo -e "${error}Build failed"
                 else
-                  echo -e "${notice}Build of ${package} successful."
+                  do_notice "Build of ${package} successful."
                   read -p "Install to your system? (y/n) " -n 1 -r
                   if [[ $REPLY =~ ^[Yy]$ ]]
                     then
@@ -98,7 +145,7 @@ function do_install {
                       # Install aborted, move packages to cache.
                       echo ""
                       sudo mv *.eopkg /var/cache/eopkg/packages/
-                      echo -e "${notice}Install aborted, eopkg file(s) for ${yellow}${package} ${white}are in ${yellow}/var/cache/eopkg/packages${white}."
+                      do_notice "Install aborted, eopkg file(s) for ${yellow}${package} ${white}are in ${yellow}/var/cache/eopkg/packages${white}."
                   fi
               fi
           fi
@@ -108,7 +155,7 @@ function do_install {
 
 function do_listinstalled {
   if [[ -f /tmp/ur/installed ]];then rm /tmp/ur/installed;fi
-  echo -e "${notice}Installed packages:"
+  do_notice "Installed packages:"
   # Check what packages are installed from the database
   while read p; do
       if [[ $(echo $p | cut -d= -f 2) == 1 ]];
@@ -119,7 +166,7 @@ function do_listinstalled {
     # Check if any packages installed
     if [ ! -f /tmp/ur/installed ];
       then
-        echo -e "${notice}Database shows no packages installed."
+        do_notice "Database shows no packages installed."
       else
         echo -e "There are ${yellow}$(cat /tmp/ur/installed | wc -l) ${white}package(s) installed."
         while read p;do
@@ -133,7 +180,7 @@ function do_listinstalled {
 
 function do_listavailable {
   # List packages that are available from the User Repo
-  echo -e "${notice}Listing available packages."
+  do_notice "Listing available packages."
   echo ""
   echo -e "There are ${yellow}$(cat /var/db/surt/repo-index | wc -l) ${white}packages available:"
   # Get name and version out
@@ -148,9 +195,11 @@ function do_listavailable {
 function print_usage {
   echo -e ""
   echo -e "${yellow}Usage:${white}"
+  echo -e "ur first-run (fr) - Re-run the first-run wizard."
   echo -e "ur install (it) - Install a package (specify name)."
   echo -e "ur list-available (la) - List packages available in the user repository."
   echo -e "ur list-installed (li) - List packages installed from the user repository."
+  echo -e "ur new-version (nv) - Upgrade to newer UR Tool if available."
   echo -e "ur remove (rm) - Remove an installed package (specify name)."
   echo -e "ur search (sr) - Search the user repository for a package (specify name)."
   echo -e "ur update-repo (ur) - Update repository information"
@@ -170,23 +219,23 @@ function do_remove {
       if [[ $confirm == "-y" ]]
         then
           # Remove package from system without y/n confirmation
-          echo -e "${notice}Removing ${yellow}${package} ${white}from your system."
+          do_notice "Removing ${yellow}${package} ${white}from your system."
           sudo eopkg rm ${package}
           sed -i 's/'"${package}"'=1/'"${package}"'=0/g' /var/db/surt/database
         else
           # Get y/n confirmation
-          echo -e "${notice}Do you wish to remove ${yellow}${package}${white}?"
+          do_notice "Do you wish to remove ${yellow}${package}${white}?"
           read -p "Confirm (y/n) " -n 1 -r
             if [[ $REPLY =~ ^[Yy]$ ]]
               then
                 # Do removel of package and update database
                 echo ""
-                echo -e "${notice}Removing ${yellow}${package} ${white}from your system."
+                do_notice "Removing ${yellow}${package} ${white}from your system."
                 sudo eopkg rm ${package}
                 sed -i 's/'"${package}"'=1/'"${package}"'=0/g' /var/db/surt/database
               else
                 echo ""
-                echo -e "${notice}Aborted removal of ${yellow}${package}${white}."
+                do_notice "Aborted removal of ${yellow}${package}${white}."
             fi
       fi
   fi
@@ -198,14 +247,14 @@ function do_search {
     then
       echo -e "${error}No search term provided."
     else
-      echo -e "${notice}Searching for ${yellow}${package}${white}."
+      do_notice "Searching for ${yellow}${package}${white}."
       if [[ $(grep -i ${package} /var/db/surt/repo-index | wc -l) -eq 0 ]]
         then
           echo -e "${error}No results for ${yellow}${package}${white}."
         elif [[ $(grep -i ${package} /var/db/surt/repo-index | wc -l) -gt 1 ]]
           then
             # Advise multiple items found
-            echo -e "${notice}Found ${yellow}$(grep -i ${package} /var/db/surt/repo-index | wc -l) ${white}items:"
+            do_notice "Found ${yellow}$(grep -i ${package} /var/db/surt/repo-index | wc -l) ${white}items:"
             grep -i ${package} /var/db/surt/repo-index > /tmp/ur/searchfound
             while read p;do
               pkg=$(echo $p | cut -d, -f 1)
@@ -215,7 +264,7 @@ function do_search {
             done </tmp/ur/searchfound
         else
           # Advise singular item found
-          echo -e "${notice}Found ${yellow}1 ${white}item:"
+          do_notice "Found ${yellow}1 ${white}item:"
           grep -i ${package} /var/db/surt/repo-index > /tmp/ur/searchfound
           while read p;do
             pkg=$(echo $p | cut -d, -f 1)
@@ -230,12 +279,12 @@ function do_search {
 function do_updaterepo {
   require_root
   # Update repo database from server to local disk.
-  echo -e "${notice}Updating Repository..."
+  do_notice "Updating Repository..."
   if [[ ! -d "/var/db/surt" ]]; then
     mkdir -p "/var/db/surt" || do_fail "Unable to create /var/db/surt - check permissions"
   fi
   wget -q http://solus-us.tk/ur/index -O /var/db/surt/repo-index
-  echo -e "${notice}Repository Updated."
+  do_notice "Repository Updated."
 }
 
 function do_upgrade {
@@ -266,10 +315,10 @@ function upgrademultiple {
   # Upgrade those suckers
   if [[ ! -f /tmp/ur/upgradethese ]]
     then
-      echo -e "${notice}No packages found that require upgrade."
+      do_notice "No packages found that require upgrade."
     else
       while read $p;do
-        echo -e "${notice}Upgrading ${yellow}${p}"
+        do_notice "Upgrading ${yellow}${p}"
         install $p
       done </tmp/ur/upgradethese
   fi
@@ -286,7 +335,7 @@ function upgradesingle {
       installedversion=$(eopkg info ${package} | grep Name | cut -d: -f 3 | cut -d, -f 1 | sed 's/ //g')
       if [[ $installedrelease -ge $newrel ]]
         then
-          echo -e "${notice}${package} is already up to date, no upgrade needed."
+          do_notice "${package} is already up to date, no upgrade needed."
         else
           echo "${yellow}${package} ${white}will be updated to version ${yellow}$newver${white}, release number ${yellow}$newrel"
           install ${package}
@@ -302,7 +351,7 @@ function do_viewinfo {
       if [[ $(cat /var/db/surt/repo-index | grep ${package} | wc -l) -eq 0 ]]
         then echo -e "${error}Package ${yellow}${package} ${white}not found in database."
       else
-        echo -e "${notice}Getting package info for ${yellow}${package}${white}."
+        do_notice "Getting package info for ${yellow}${package}${white}."
         cd /tmp/ur
         wget -q http://solus-us.tk/ur/${package}.yml
         if [[ -f ${package}.yml ]]
@@ -328,7 +377,7 @@ function do_viewyml {
       if [[ $(cat /var/db/surt/repo-index | grep ${package} | wc -l) -eq 0 ]]
         then echo -e "${error}}Package ${yellow}${package} ${white}not found in database."
       else
-        echo -e "${notice}Getting yml template for ${yellow}${package}${white}."
+        do_notice "Getting yml template for ${yellow}${package}${white}."
         cd /tmp/ur
         wget -q http://solus-us.tk/ur/${package}.yml
         if [[ -f ${package}.yml ]]
@@ -364,17 +413,16 @@ if [[ -f /tmp/urlock ]]
     touch /tmp/urlock
 fi
 
-# Check for packager file, if not, create
-if [[ ! -d ~/.solus ]];then createpackagerfile
-fi
-
 # Check if repo index exists, if not, fetch
-if [[ ! -f /var/db/surt/repo-index ]];then echo -e "${notice}Repository index not present, fetching.";do_updaterepo
+if [[ ! -f /var/db/surt/repo-index ]];then do_notice "Repository index not present, fetching.";do_updaterepo
 fi
 
 # Check if database exists, if not, create
 if [[ ! -f /var/db/surt/database ]];then touch /var/db/surt/database
 fi
+
+# Check if this is first run or subsequent
+if [[ ! $(cat /var/db/surt/firstrundone) -eq 1 ]];then do_firstrun;fi
 
 arg="${1}"
 shift
@@ -408,6 +456,12 @@ case "${arg}" in
         ;;
     list-installed|li)
         do_listinstalled $*
+        ;;
+    first-run|fr)
+        do_firstrun $*
+        ;;
+    new-version|nv)
+        do_upgradecheck $*
         ;;
     *)
         print_usage

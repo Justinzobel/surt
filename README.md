@@ -3,7 +3,6 @@ Solus User Repository Tool
 
 # Installation
 
-* sudo eopkg it pyyaml -y
 * sudo wget https://raw.githubusercontent.com/Justinzobel/surt/master/ur -O /usr/bin/ur;sudo chmod +x /usr/bin/ur
 * sudo mkdir /var/db/surt;sudo chmod ug+rw /var/db/surt
 
